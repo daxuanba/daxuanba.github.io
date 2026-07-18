@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>正在准备下载… · 大轩巴 AI</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script>
+    /* 在绘制前应用已保存的主题，避免闪烁 */
+    try {
+      var t = localStorage.getItem('dxb-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <main class="handler">
+    <div class="handler__card" id="card">
+      <div class="handler__icon" id="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </div>
+      <h1 id="title">正在校验下载…</h1>
+      <p id="desc">验证签名、有效期与单次使用状态。</p>
+      <div class="spinner" id="spinner"></div>
+      <div class="handler__bar" id="bar"><span></span></div>
+      <div id="actions" class="row gap-3 center wrap" style="justify-content:center;margin-top:var(--sp-5);display:none">
+        <span class="magnetic" data-strength="0.3"><a class="btn btn--primary" id="retry" href="daxuanba-ai.html#download">重新下载</a></span>
+        <span class="magnetic" data-strength="0.3"><a class="btn btn--ghost" href="index.html">返回首页</a></span>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/downloads.js" defer></script>
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var params = new URLSearchParams(location.search);
+      var data = { file: params.get('file'), exp: params.get('exp'), sig: params.get('sig'), nonce: params.get('nonce') };
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function fail(reason) {
+        $('spinner').style.display = 'none';
+        $('bar').style.display = 'none';
+        $('card').classList.add('handler--error');
+        $('icon').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+        var map = {
+          expired: ['链接已过期', '这条下载地址已超过有效期（默认 15 分钟），已自动作废。请回到下载页重新点一次「下载」生成新链接。'],
+          used: ['链接已使用', '这条下载地址仅限使用一次，已经被使用过了。如需再次下载，请回到下载页重新点「下载」获取一条新链接。'],
+          badsig: ['链接无效', '签名校验未通过或参数被篡改，链接不可信。请重新获取。'],
+          missing: ['链接不完整', '缺少必要参数，链接可能不完整。请回到下载页重新点「下载」。']
+        };
+        var m = map[reason] || map.missing;
+        $('title').textContent = m[0];
+        $('desc').textContent = m[1];
+        $('actions').style.display = 'flex';
+      }
+
+      function succeed(file) {
+        var raw = decodeURIComponent(file);
+        var name = raw.split('/').pop();
+        var href = raw.split('/').map(encodeURIComponent).join('/');
+        $('spinner').style.display = 'none';
+        $('bar').style.display = 'none';
+        $('title').textContent = '验证通过，正在下载';
+        $('desc').textContent = name + ' · 浏览器会自动开始下载；若没有反应，请点击下方按钮。';
+        var btn = document.createElement('a');
+        btn.className = 'btn btn--primary';
+        btn.href = href;
+        btn.setAttribute('download', name);
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> 点击下载 ' + esc(name);
+        $('actions').style.display = 'flex';
+        $('actions').prepend(btn);
+        // 自动触发下载
+        var a = document.createElement('a');
+        a.href = href; a.setAttribute('download', name);
+        document.body.appendChild(a);
+        setTimeout(function () { a.click(); a.remove(); }, 350);
+      }
+
+      window.addEventListener('DOMContentLoaded', function () {
+        if (!window.DXB || !window.DXB.validate) { fail('missing'); return; }
+        window.DXB.validate(data).then(function (r) {
+          if (!r.ok) { fail(r.reason); return; }
+          if (window.DXB.isNonceUsed && window.DXB.isNonceUsed(data.nonce)) { fail('used'); return; }
+          if (window.DXB.markNonceUsed) window.DXB.markNonceUsed(data.nonce);
+          succeed(r.file);
+        }).catch(function () { fail('badsig'); });
+      });
+    })();
+  </script>
+</body>
+</html>

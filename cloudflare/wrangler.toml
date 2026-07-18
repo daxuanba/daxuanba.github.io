@@ -1,0 +1,23 @@
+# 大轩巴 — Cloudflare Worker 配置（可选，用于全站级「单次使用」下载门禁）
+# 用法：
+#   1. 安装 wrangler：  npm i -g wrangler
+#   2. 登录：          wrangler login
+#   3. 创建 KV：       wrangler kv namespace create DXB_LINKS
+#      把输出的 id 填到下面的 binding 处（替换 REPLACE_WITH_YOUR_KV_ID）。
+#   4. 部署：          wrangler deploy
+#
+# 部署后，用自定义路由把  your-domain.com/download.html*  指到这个 Worker，
+# 即可让「用过即废」在服务器侧生效（覆盖静态站点本身的前端本地记录）。
+
+name = "daxuanba-download-gate"
+main = "cloudflare/worker.js"
+compatibility_date = "2024-09-23"
+
+kv_namespaces = [
+  { binding = "DXB_LINKS", id = "REPLACE_WITH_YOUR_KV_ID" }
+]
+
+# 若用独立 Worker 代理站点，可加路由（取消注释并改成你的域名）：
+# routes = [
+#   { pattern = "your-domain.com/download.html*", custom_domain = true }
+# ]
