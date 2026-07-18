@@ -1197,6 +1197,9 @@ p { color: var(--text-2); }
    32. DOWNLOAD HANDLER (download.html)
    ========================================================================== */
 .handler { min-height: 100vh; display: grid; place-items: center; padding: var(--sp-6); }
+.handler.is-overlay { position: fixed; inset: 0; z-index: 1000; min-height: 0; background: var(--bg); display: none; }
+.handler.is-overlay.show { display: grid; }
+.handler.is-overlay .handler__card { box-shadow: var(--shadow-3); }
 .handler__card {
   width: min(92vw, 460px); text-align: center;
   padding: var(--sp-8); border: 1px solid var(--border); border-radius: var(--r-xl);

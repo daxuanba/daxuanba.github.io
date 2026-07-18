@@ -70,16 +70,14 @@
     }
   }
 
-  /* ---- 生成签名下载地址 ---- */
-  function buildUrl(file, ttlMinutes) {
+  /* ---- 生成签名令牌（当前页内联下载用，不再构造跳转 URL） ---- */
+  function signFile(file, ttlMinutes) {
     const exp = Date.now() + ttlMinutes * 60 * 1000;
     const nonce = randomNonce();
-    const msg = file + '|' + exp + '|' + nonce;
-    return sign(msg).then(sig => {
-      const q = new URLSearchParams({ file: file, exp: String(exp), nonce: nonce, sig: sig });
-      return { url: 'download.html?' + q.toString(), exp, sig, nonce };
-    });
+    return sign(file + '|' + exp + '|' + nonce).then(sig => ({ file: file, exp: exp, sig: sig, nonce: nonce }));
   }
+
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   /* ---- 校验（在 download.html 侧调用） ---- */
   async function validate(params) {
@@ -159,13 +157,21 @@
       if (label) label.textContent = '正在准备…';
       dlBtn.disabled = true;
       try {
-        const { url } = await buildUrl(f.path, ttl);
-        // 在新标签页打开校验页，它会自动开始下载；原页面保留。
-        const w = window.open(url, '_blank', 'noopener');
-        if (!w) { window.location.href = url; }   // 弹窗被拦截时退回当前页跳转
+        const token = await signFile(f.path, ttl);
+        const data = { file: token.file, exp: String(token.exp), sig: token.sig, nonce: token.nonce };
+        // 在当前页覆盖层内联校验 + 直接下载，不再跳转 download.html
+        Overlay.open();
+        await wait(260);
+        const r = await validate(data);
+        if (!r.ok) { Overlay.fail(r.reason); return; }
+        if (isNonceUsed(data.nonce)) { Overlay.fail('used'); return; }
+        markNonceUsed(data.nonce);
+        const name = f.name || decodeURIComponent(f.path).split('/').pop();
+        Overlay.downloading(name);
+        triggerDownload(f.path, name);
+        setTimeout(function () { Overlay.close(); }, 2600);
       } catch (e) {
-        if (label) label.textContent = '下载';
-        dlBtn.disabled = false;
+        Overlay.fail('badsig');
         if (window.dxbToast) window.dxbToast('生成下载地址失败，请重试');
       }
     });
@@ -175,5 +181,85 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  window.DXB = { buildUrl, validate, getManifest, renderCards, ICONS, sign, isNonceUsed, markNonceUsed };
+  /* ---- 当前页下载覆盖层（替代跳转 download.html） ---- */
+  const Overlay = (function () {
+    const el = function () { return document.getElementById('dlOverlay'); };
+    const $ = function (id) { return document.getElementById(id); };
+    const ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>';
+    const ICON_ERR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+
+    function open() {
+      const o = el(); if (!o) return;
+      o.classList.remove('is-error');
+      $('dlCard').classList.remove('handler--error');
+      $('dlSpinner').style.display = '';
+      $('dlBar').style.display = '';
+      $('dlActions').style.display = 'none';
+      $('dlIcon').innerHTML = ICON_OK;
+      $('dlTitle').textContent = '正在校验下载…';
+      $('dlDesc').textContent = '验证签名、有效期与单次使用状态。';
+      o.classList.add('show');
+      o.setAttribute('aria-hidden', 'false');
+    }
+    function downloading(name) {
+      $('dlSpinner').style.display = 'none';
+      $('dlBar').style.display = 'none';
+      $('dlTitle').textContent = '验证通过，正在下载';
+      $('dlDesc').textContent = name + ' · 浏览器会自动开始下载；若没有反应，请点「关闭」后重试。';
+      if ($('dlRetry')) $('dlRetry').style.display = 'none';
+      if ($('dlClose')) $('dlClose').style.display = '';
+      $('dlActions').style.display = 'flex';
+    }
+    function fail(reason) {
+      $('dlSpinner').style.display = 'none';
+      $('dlBar').style.display = 'none';
+      $('dlCard').classList.add('handler--error');
+      $('dlIcon').innerHTML = ICON_ERR;
+      const map = {
+        expired: ['链接已过期', '这条下载地址已超过有效期（默认 15 分钟），已自动作废。请点「重新下载」生成新链接。'],
+        used: ['链接已使用', '这条下载地址仅限使用一次，已经被使用过了。点「重新下载」获取一条新链接。'],
+        badsig: ['链接无效', '签名校验未通过或参数被篡改，链接不可信。请重新获取。'],
+        missing: ['链接不完整', '缺少必要参数，链接可能不完整。请重新获取。']
+      };
+      const m = map[reason] || map.missing;
+      $('dlTitle').textContent = m[0];
+      $('dlDesc').textContent = m[1];
+      if ($('dlRetry')) $('dlRetry').style.display = '';
+      if ($('dlClose')) $('dlClose').style.display = '';
+      $('dlActions').style.display = 'flex';
+    }
+    function restoreButtons() {
+      const btns = document.querySelectorAll('.download-card .download');
+      btns.forEach(function (b) {
+        b.disabled = false;
+        const s = b.querySelector('span'); if (s) s.textContent = '下载';
+      });
+    }
+    function close() {
+      const o = el(); if (!o) return;
+      o.classList.remove('show');
+      o.setAttribute('aria-hidden', 'true');
+      restoreButtons();
+    }
+    function init() {
+      const c = $('dlClose'); if (c) c.addEventListener('click', close);
+      const r = $('dlRetry'); if (r) r.addEventListener('click', close);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+    return { open: open, fail: fail, downloading: downloading, close: close };
+  })();
+
+  /* ---- 在当前页直接触发下载 ---- */
+  function triggerDownload(file, name) {
+    const raw = decodeURIComponent(file);
+    const nm = name || raw.split('/').pop();
+    const href = /^https?:\/\//i.test(raw) ? raw : raw.split('/').map(encodeURIComponent).join('/');
+    const a = document.createElement('a');
+    a.href = href; a.setAttribute('download', nm);
+    document.body.appendChild(a);
+    setTimeout(function () { a.click(); a.remove(); }, 350);
+  }
+
+  window.DXB = { signFile, validate, getManifest, renderCards, ICONS, sign, isNonceUsed, markNonceUsed, Overlay, triggerDownload };
 })();
