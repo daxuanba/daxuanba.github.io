@@ -2,6 +2,12 @@
 daxuanba AI/大轩巴-Setup-1.0.0.exe
 daxuanba AI/大轩巴-1.0.0-arm64.dmg
 daxuanba AI/大轩巴-1.0.0.AppImage
+daxuanba AI/Daxuanba-Setup-1.0.0.exe
+daxuanba AI/Daxuanba-1.0.0-arm64.dmg
+daxuanba AI/Daxuanba-1.0.0.AppImage
+
+# Upload helper script
+upload_releases.sh
 
 # WorkBuddy internal
 .workbuddy/

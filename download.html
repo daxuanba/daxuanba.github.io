@@ -66,7 +66,7 @@
       function succeed(file) {
         var raw = decodeURIComponent(file);
         var name = raw.split('/').pop();
-        var href = raw.split('/').map(encodeURIComponent).join('/');
+        var href = /^https?:\/\//i.test(raw) ? raw : raw.split('/').map(encodeURIComponent).join('/');
         $('spinner').style.display = 'none';
         $('bar').style.display = 'none';
         $('title').textContent = '验证通过，正在下载';
