@@ -27,11 +27,19 @@
 
   /* ---- 内置兜底清单（fetch 失败时，例如本地 file:// 预览） ---- */
   const EMBEDDED = {
-    appName: '大轩巴 AI 部署', publisher: '大轩巴', latest: '1.0.0', linkTtlMinutes: TTL_MIN,
+    appName: '大轩巴 AI 部署', publisher: '大轩巴', latest: '1.0.1', linkTtlMinutes: TTL_MIN,
     baseUrl: 'https://github.com/daxuanba/daxuanba.github.io/releases/download',
     versions: [
       {
-        version: '1.0.0', date: '2026-07-09', channel: 'latest',
+        version: '1.0.1', date: '2026-07-19', channel: 'latest',
+        files: [
+          { id: 'win-setup', name: 'Daxuanba-Setup-1.0.1.exe', file: 'Daxuanba-Setup-1.0.1.exe', platform: 'windows', label: 'Windows 安装包', desc: 'Windows 64 位安装程序，一键安装。', size: '78 MB', primary: true },
+          { id: 'mac-dmg', name: 'Daxuanba-1.0.1-arm64.dmg', file: 'Daxuanba-1.0.1-arm64.dmg', platform: 'macos', label: 'macOS 安装包（Apple Silicon）', desc: 'macOS ARM64 (M1/M2/M3) 安装镜像。', size: '94 MB', primary: false },
+          { id: 'linux-appimage', name: 'Daxuanba-1.0.1.AppImage', file: 'Daxuanba-1.0.1.AppImage', platform: 'linux', label: 'Linux 便携版', desc: 'Linux AppImage 便携版，无需安装直接运行。', size: '103 MB', primary: false }
+        ]
+      },
+      {
+        version: '1.0.0', date: '2026-07-09', channel: 'history',
         files: [
           { id: 'win-setup', name: 'Daxuanba-Setup-1.0.0.exe', file: 'Daxuanba-Setup-1.0.0.exe', platform: 'windows', label: 'Windows 安装包', desc: 'Windows 64 位安装程序，一键安装。', size: '78 MB', primary: true },
           { id: 'mac-dmg', name: 'Daxuanba-1.0.0-arm64.dmg', file: 'Daxuanba-1.0.0-arm64.dmg', platform: 'macos', label: 'macOS 安装包（Apple Silicon）', desc: 'macOS ARM64 (M1/M2/M3) 安装镜像。', size: '95 MB', primary: false },
@@ -113,7 +121,10 @@
   /* ---- 读取版本清单（versions.json） ---- */
   async function getVersions() {
     try {
-      const res = await fetch('versions.json', { cache: 'no-store' });
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 8000);
+      const res = await fetch('versions.json', { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(timer);
       if (!res.ok) throw new Error('http ' + res.status);
       const data = await res.json();
       if (!data.versions || !data.versions.length) throw new Error('empty');
@@ -161,6 +172,7 @@
   /* ---- 渲染「最新版本」卡片 ---- */
   async function renderLatest(container) {
     if (!container) return;
+    container.innerHTML = '';   // 立即清掉骨架屏，避免卡在"获取中"
     const data = await getVersions();
     const ttl = data.linkTtlMinutes || TTL_MIN;
     const v = resolveLatest(data);
