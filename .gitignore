@@ -1,13 +1,14 @@
 # Large installer files - hosted on GitHub Releases, not in repo
-daxuanba AI/大轩巴-Setup-1.0.0.exe
-daxuanba AI/大轩巴-1.0.0-arm64.dmg
-daxuanba AI/大轩巴-1.0.0.AppImage
-daxuanba AI/Daxuanba-Setup-1.0.0.exe
-daxuanba AI/Daxuanba-1.0.0-arm64.dmg
-daxuanba AI/Daxuanba-1.0.0.AppImage
+daxuanba AI/Daxuanba-*.exe
+daxuanba AI/Daxuanba-*.dmg
+daxuanba AI/Daxuanba-*.AppImage
+daxuanba AI/大轩巴-*.exe
+daxuanba AI/大轩巴-*.dmg
+daxuanba AI/大轩巴-*.AppImage
 
-# Upload helper script
+# Upload helper scripts
 upload_releases.sh
+upload_v1.0.1.ps1
 
 # WorkBuddy internal
 .workbuddy/

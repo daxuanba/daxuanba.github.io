@@ -27,12 +27,17 @@
 
   /* ---- 内置兜底清单（fetch 失败时，例如本地 file:// 预览） ---- */
   const EMBEDDED = {
-    appName: '大轩巴 AI 部署', appVersion: '1.0.0', publisher: '大轩巴',
-    linkTtlMinutes: TTL_MIN,
-    files: [
-      { id: 'win-setup', name: '大轩巴-Setup-1.0.0.exe', path: 'https://github.com/daxuanba/daxuanba.github.io/releases/download/v1.0.0/Daxuanba-Setup-1.0.0.exe', label: 'Windows 安装包', desc: 'Windows 64 位安装程序，一键安装。', size: '78 MB', platform: 'windows', primary: true },
-      { id: 'mac-dmg', name: '大轩巴-1.0.0-arm64.dmg', path: 'https://github.com/daxuanba/daxuanba.github.io/releases/download/v1.0.0/Daxuanba-1.0.0-arm64.dmg', label: 'macOS 安装包（Apple Silicon）', desc: 'macOS ARM64 (M1/M2/M3) 安装镜像。', size: '95 MB', platform: 'macos', primary: false },
-      { id: 'linux-appimage', name: '大轩巴-1.0.0.AppImage', path: 'https://github.com/daxuanba/daxuanba.github.io/releases/download/v1.0.0/Daxuanba-1.0.0.AppImage', label: 'Linux 便携版', desc: 'Linux AppImage 便携版，无需安装直接运行。', size: '104 MB', platform: 'linux', primary: false }
+    appName: '大轩巴 AI 部署', publisher: '大轩巴', latest: '1.0.0', linkTtlMinutes: TTL_MIN,
+    baseUrl: 'https://github.com/daxuanba/daxuanba.github.io/releases/download',
+    versions: [
+      {
+        version: '1.0.0', date: '2026-07-09', channel: 'latest',
+        files: [
+          { id: 'win-setup', name: 'Daxuanba-Setup-1.0.0.exe', file: 'Daxuanba-Setup-1.0.0.exe', platform: 'windows', label: 'Windows 安装包', desc: 'Windows 64 位安装程序，一键安装。', size: '78 MB', primary: true },
+          { id: 'mac-dmg', name: 'Daxuanba-1.0.0-arm64.dmg', file: 'Daxuanba-1.0.0-arm64.dmg', platform: 'macos', label: 'macOS 安装包（Apple Silicon）', desc: 'macOS ARM64 (M1/M2/M3) 安装镜像。', size: '95 MB', primary: false },
+          { id: 'linux-appimage', name: 'Daxuanba-1.0.0.AppImage', file: 'Daxuanba-1.0.0.AppImage', platform: 'linux', label: 'Linux 便携版', desc: 'Linux AppImage 便携版，无需安装直接运行。', size: '104 MB', primary: false }
+        ]
+      }
     ]
   };
 
@@ -105,48 +110,107 @@
     } catch (e) {}
   }
 
-  /* ---- 读取清单 ---- */
-  async function getManifest() {
+  /* ---- 读取版本清单（versions.json） ---- */
+  async function getVersions() {
     try {
-      const res = await fetch('daxuanba AI/manifest.json', { cache: 'no-store' });
+      const res = await fetch('versions.json', { cache: 'no-store' });
       if (!res.ok) throw new Error('http ' + res.status);
-      return await res.json();
+      const data = await res.json();
+      if (!data.versions || !data.versions.length) throw new Error('empty');
+      return data;
     } catch (e) {
       return EMBEDDED;
     }
   }
 
-  /* ---- 渲染下载卡片 ---- */
-  async function renderCards(container) {
+  function resolveLatest(data) {
+    const v = (data.versions || []).find(function (x) { return x.version === data.latest; });
+    return v || data.versions[0];
+  }
+
+  function fileUrl(data, version, file) {
+    const base = data.baseUrl || 'https://github.com/daxuanba/daxuanba.github.io/releases/download';
+    return base + '/v' + version + '/' + file;
+  }
+
+  /* ---- 单文件卡片 ---- */
+  function renderFileCard(f, ttl, isHistory) {
+    const card = document.createElement('div');
+    card.className = 'download-card' + (f.primary && !isHistory ? ' download-card--primary' : '');
+    card.dataset.file = f.path;
+    card.dataset.ttl = String(ttl);
+    card.innerHTML = `
+      <div class="download-card__head">
+        <div class="download-card__plat">${ICONS[f.platform] || ICONS.all}</div>
+        <div>
+          <h3>${escapeHtml(f.name)}</h3>
+          <div class="meta">${escapeHtml(f.label || '')} · <span class="size">${escapeHtml(f.size || '')}</span></div>
+        </div>
+      </div>
+      <p class="desc">${escapeHtml(f.desc || '')}</p>
+      <div class="row gap-2 wrap">
+        <span class="magnetic" data-strength="0.3"><button class="btn btn--primary download" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span>下载</span></button></span>
+      </div>
+      <div class="download-card__note">链接 ${ttl} 分钟内有效 · 仅限使用一次</div>`;
+    wireCard(card, f, ttl);
+    return card;
+  }
+
+  /* ---- 渲染「最新版本」卡片 ---- */
+  async function renderLatest(container) {
     if (!container) return;
-    const m = await getManifest();
-    const ttl = m.linkTtlMinutes || TTL_MIN;
+    const data = await getVersions();
+    const ttl = data.linkTtlMinutes || TTL_MIN;
+    const v = resolveLatest(data);
+    const badge = document.getElementById('latestVersion');
+    if (badge) badge.textContent = 'v' + v.version;
+    const sub = document.getElementById('latestDate');
+    if (sub && v.date) sub.textContent = v.date;
     container.innerHTML = '';
-    (m.files || []).forEach((f) => {
-      const card = document.createElement('div');
-      card.className = 'download-card' + (f.primary ? ' download-card--primary' : '');
-      card.dataset.file = f.path;
-      card.dataset.ttl = String(ttl);
-      card.innerHTML = `
-        <div class="download-card__head">
-          <div class="download-card__plat">${ICONS[f.platform] || ICONS.all}</div>
-          <div>
-            <h3>${escapeHtml(f.name)}</h3>
-            <div class="meta">${escapeHtml(f.label || '')} · <span class="size">${escapeHtml(f.size || '')}</span></div>
-          </div>
-        </div>
-        <p class="desc">${escapeHtml(f.desc || '')}</p>
-        <div class="row gap-2 wrap">
-          <span class="magnetic" data-strength="0.3"><button class="btn btn--primary download" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-            <span>下载</span></button></span>
-        </div>
-        <div class="download-card__note">链接 ${ttl} 分钟内有效 · 仅限使用一次</div>`;
-      container.appendChild(card);
-      wireCard(card, f, ttl);
+    (v.files || []).forEach(function (f) {
+      f.path = fileUrl(data, v.version, f.file);
+      container.appendChild(renderFileCard(f, ttl, false));
     });
-    // 通知 main.js 给新节点重新绑定磁吸 / 高光 / 揭示
     document.dispatchEvent(new Event('dxb:cards-rendered'));
+  }
+
+  /* ---- 渲染「历史版本」折叠列表 ---- */
+  async function renderHistory(container) {
+    if (!container) return;
+    const data = await getVersions();
+    const ttl = data.linkTtlMinutes || TTL_MIN;
+    const hist = (data.versions || []).filter(function (x) { return x.version !== data.latest; });
+    container.innerHTML = '';
+    if (!hist.length) { container.style.display = 'none'; return; }
+    hist.forEach(function (v) {
+      const item = document.createElement('div');
+      item.className = 'version-item';
+      item.innerHTML = `
+        <button class="version-item__head" type="button" aria-expanded="false">
+          <span class="version-item__name">v${escapeHtml(v.version)}</span>
+          <span class="version-item__date">${escapeHtml(v.date || '')}</span>
+          <span class="version-item__chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="version-item__body"></div>`;
+      const body = item.querySelector('.version-item__body');
+      (v.files || []).forEach(function (f) {
+        f.path = fileUrl(data, v.version, f.file);
+        body.appendChild(renderFileCard(f, ttl, true));
+      });
+      const head = item.querySelector('.version-item__head');
+      head.addEventListener('click', function () {
+        const open = item.classList.toggle('is-open');
+        head.setAttribute('aria-expanded', String(open));
+      });
+      container.appendChild(item);
+    });
+  }
+
+  /* ---- 旧渲染入口（兼容） ---- */
+  async function renderCards(container) {
+    return renderLatest(container);
   }
 
   function wireCard(card, f, ttl) {
@@ -261,5 +325,5 @@
     setTimeout(function () { a.click(); a.remove(); }, 350);
   }
 
-  window.DXB = { signFile, validate, getManifest, renderCards, ICONS, sign, isNonceUsed, markNonceUsed, Overlay, triggerDownload };
+  window.DXB = { signFile, validate, getVersions, renderLatest, renderHistory, getManifest: getVersions, renderCards: renderLatest, ICONS, sign, isNonceUsed, markNonceUsed, Overlay, triggerDownload };
 })();

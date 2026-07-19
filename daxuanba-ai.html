@@ -114,6 +114,7 @@
         <div class="section__head center reveal">
           <span class="eyebrow">下载中心</span>
           <h2>获取大轩巴 AI 安装包</h2>
+          <div class="version-badge">最新稳定版 <strong id="latestVersion">v1.0.1</strong><span id="latestDate" class="version-badge__date"></span></div>
           <p class="lead mx-auto">点「下载」，会<b>即时生成一条带签名、15 分钟自动过期、且仅限使用一次的地址</b>，浏览器校验通过后自动开始下载。全程由前端 JS 控制，适合临时分发、防止被长期爬取。</p>
         </div>
 
@@ -126,6 +127,13 @@
           <div class="skeleton" style="height:248px"></div>
           <div class="skeleton" style="height:248px"></div>
           <div class="skeleton" style="height:248px"></div>
+        </div>
+
+        <div class="version-history" id="version-history" aria-label="历史版本">
+          <div class="version-history__head">
+            <h3>历史版本</h3>
+            <p>需要旧版？展开下面的版本，直接下载对应的安装包。</p>
+          </div>
         </div>
       </div>
     </section>
@@ -272,8 +280,9 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
     window.addEventListener('DOMContentLoaded', function () {
-      if (window.DXB && window.DXB.renderCards) {
-        window.DXB.renderCards(document.getElementById('download-cards'));
+      if (window.DXB) {
+        if (window.DXB.renderLatest) window.DXB.renderLatest(document.getElementById('download-cards'));
+        if (window.DXB.renderHistory) window.DXB.renderHistory(document.getElementById('version-history'));
       }
     });
   </script>

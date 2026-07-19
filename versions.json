@@ -1,0 +1,29 @@
+{
+  "appName": "大轩巴 AI 部署",
+  "publisher": "大轩巴",
+  "latest": "1.0.1",
+  "linkTtlMinutes": 15,
+  "baseUrl": "https://github.com/daxuanba/daxuanba.github.io/releases/download",
+  "versions": [
+    {
+      "version": "1.0.1",
+      "date": "2026-07-19",
+      "channel": "latest",
+      "files": [
+        { "id": "win-setup", "name": "Daxuanba-Setup-1.0.1.exe", "platform": "windows", "label": "Windows 安装包", "desc": "Windows 64 位安装程序，一键安装。", "size": "78 MB", "file": "Daxuanba-Setup-1.0.1.exe", "primary": true },
+        { "id": "mac-dmg", "name": "Daxuanba-1.0.1-arm64.dmg", "platform": "macos", "label": "macOS 安装包（Apple Silicon）", "desc": "macOS ARM64 (M1/M2/M3) 安装镜像。", "size": "94 MB", "file": "Daxuanba-1.0.1-arm64.dmg", "primary": false },
+        { "id": "linux-appimage", "name": "Daxuanba-1.0.1.AppImage", "platform": "linux", "label": "Linux 便携版", "desc": "Linux AppImage 便携版，无需安装直接运行。", "size": "103 MB", "file": "Daxuanba-1.0.1.AppImage", "primary": false }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-07-09",
+      "channel": "history",
+      "files": [
+        { "id": "win-setup", "name": "Daxuanba-Setup-1.0.0.exe", "platform": "windows", "label": "Windows 安装包", "desc": "Windows 64 位安装程序，一键安装。", "size": "78 MB", "file": "Daxuanba-Setup-1.0.0.exe", "primary": true },
+        { "id": "mac-dmg", "name": "Daxuanba-1.0.0-arm64.dmg", "platform": "macos", "label": "macOS 安装包（Apple Silicon）", "desc": "macOS ARM64 (M1/M2/M3) 安装镜像。", "size": "95 MB", "file": "Daxuanba-1.0.0-arm64.dmg", "primary": false },
+        { "id": "linux-appimage", "name": "Daxuanba-1.0.0.AppImage", "platform": "linux", "label": "Linux 便携版", "desc": "Linux AppImage 便携版，无需安装直接运行。", "size": "104 MB", "file": "Daxuanba-1.0.0.AppImage", "primary": false }
+      ]
+    }
+  ]
+}
