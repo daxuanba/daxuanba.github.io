@@ -9,6 +9,7 @@ daxuanba AI/大轩巴-*.AppImage
 # Upload helper scripts
 upload_releases.sh
 upload_v1.0.1.ps1
+upload_v1.0.2.ps1
 
 # WorkBuddy internal
 .workbuddy/
